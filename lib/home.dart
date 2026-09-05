@@ -6,7 +6,7 @@ import 'package:mob_ass/map/geocoding.dart';
 
 import 'package:mob_ass/map/map_layer.dart';
 import 'package:mob_ass/models/safety_alert.dart';
-import 'package:mob_ass/safety_alerts_store.dart';
+import 'package:mob_ass/alerts/safety_alerts_store.dart';
 
 class HomePage extends StatefulWidget {
   final Function(int)? onNavigateToTab;
@@ -64,9 +64,12 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
+        body: SafeArea(
+          child: RefreshIndicator(
+              onRefresh: () => _alertsStore.loadAlerts(),
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -205,7 +208,8 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-          )
+          ),
+          ),
       ),
     );
   }

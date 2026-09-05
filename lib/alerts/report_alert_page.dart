@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart' as loc;
 import 'package:mob_ass/map/map_layer.dart';
-import 'package:mob_ass/safety_alerts_store.dart';
+import 'package:mob_ass/models/safety_alert.dart';
+import 'package:mob_ass/alerts/safety_alerts_store.dart';
 
 class ReportAlertPage extends StatefulWidget {
   const ReportAlertPage({super.key});
@@ -17,6 +18,7 @@ class _ReportAlertPageState extends State<ReportAlertPage> {
   final loc.Location _location = loc.Location();
 
   String _selectedType = mapLayerOptions.first.id;
+  AlertSeverity _selectedSeverity = AlertSeverity.medium;
   LatLng? _position;
   bool _locating = true;
   bool _submitting = false;
@@ -65,16 +67,47 @@ class _ReportAlertPageState extends State<ReportAlertPage> {
     if (_titleController.text.trim().isEmpty || _position == null) return;
     setState(() => _submitting = true);
 
-    SafetyAlertsStore.instance.reportAlert(
-      typeId: _selectedType,
-      title: _titleController.text.trim(),
-      description:
-      _descController.text.trim().isEmpty ? null : _descController.text.trim(),
-      position: _position!,
-    );
+    try {
+      await SafetyAlertsStore.instance.reportAlert(
+        typeId: _selectedType,
+        title: _titleController.text.trim(),
+        description:
+        _descController.text.trim().isEmpty ? null : _descController.text.trim(),
+        position: _position!,
+        severity: _selectedSeverity,
+      );
 
-    if (!mounted) return;
-    Navigator.pop(context, true);
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _submitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to submit report: $e')),
+      );
+    }
+  }
+
+  Color _severityColor(AlertSeverity severity) {
+    switch (severity) {
+      case AlertSeverity.low:
+        return Colors.green;
+      case AlertSeverity.medium:
+        return Colors.orange;
+      case AlertSeverity.high:
+        return Colors.red;
+    }
+  }
+
+  String _severityLabel(AlertSeverity severity) {
+    switch (severity) {
+      case AlertSeverity.low:
+        return 'Low';
+      case AlertSeverity.medium:
+        return 'Medium';
+      case AlertSeverity.high:
+        return 'High';
+    }
   }
 
   @override
@@ -113,6 +146,30 @@ class _ReportAlertPageState extends State<ReportAlertPage> {
                     fontSize: 12,
                   ),
                   onSelected: (_) => setState(() => _selectedType = option.id),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+            const Text('Severity',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: AlertSeverity.values.map((severity) {
+                final selected = _selectedSeverity == severity;
+                final color = _severityColor(severity);
+                return ChoiceChip(
+                  label: Text(_severityLabel(severity)),
+                  selected: selected,
+                  selectedColor: color,
+                  backgroundColor: color.withOpacity(0.1),
+                  labelStyle: TextStyle(
+                    color: selected ? Colors.white : color,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                  onSelected: (_) => setState(() => _selectedSeverity = severity),
                 );
               }).toList(),
             ),
