@@ -57,7 +57,6 @@ class _ReportAlertPageState extends State<ReportAlertPage> {
         }
       }
     } catch (_) {
-      // Leave _position null; the UI shows "location unavailable" + a retry button.
     } finally {
       if (mounted) setState(() => _locating = false);
     }

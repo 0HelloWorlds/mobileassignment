@@ -15,7 +15,6 @@ class LiveLocationMap extends StatefulWidget {
 
   final List<Polyline> polylines;
 
-  /// Called every time a new GPS fix comes in, with the updated LatLng.
   final ValueChanged<LatLng>? onLocationChanged;
 
   const LiveLocationMap({
@@ -58,7 +57,6 @@ class _LiveLocationMapState extends State<LiveLocationMap> {
   }
 
   Future<void> _initLocation() async {
-    // 1. Make sure device GPS/location service is turned on.
     bool serviceEnabled = await _location.serviceEnabled();
     if (!serviceEnabled) {
       serviceEnabled = await _location.requestService();
@@ -72,7 +70,6 @@ class _LiveLocationMapState extends State<LiveLocationMap> {
       }
     }
 
-    // 2. Make sure we have permission to read the user's location.
     PermissionStatus permission = await _location.hasPermission();
     if (permission == PermissionStatus.denied) {
       permission = await _location.requestPermission();
@@ -87,7 +84,6 @@ class _LiveLocationMapState extends State<LiveLocationMap> {
       return;
     }
 
-    // 3. Start listening for live position updates.
     _locationSub = _location.onLocationChanged.listen((locData) {
       if (locData.latitude == null || locData.longitude == null) return;
       final newLatLng = LatLng(locData.latitude!, locData.longitude!);

@@ -59,7 +59,6 @@ class AlertDetailPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Header card: icon, title, severity badge
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -111,7 +110,6 @@ class AlertDetailPage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Description
             if (alert.description != null) ...[
               _sectionLabel('Details'),
               Container(
@@ -126,7 +124,6 @@ class AlertDetailPage extends StatelessWidget {
               const SizedBox(height: 16),
             ],
 
-            // Metadata
             _sectionLabel('Information'),
             Container(
               decoration: BoxDecoration(

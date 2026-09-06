@@ -4,6 +4,7 @@ import 'package:mob_ass/models/app_user.dart';
 import 'package:mob_ass/admin/admin_users_page.dart';
 import 'package:mob_ass/admin/create_admin_page.dart';
 import 'package:mob_ass/admin/admin_account_page.dart';
+import 'package:mob_ass/admin/admin_alerts_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   final AppUser admin;
@@ -123,6 +124,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     if (mounted) {
                       _loadStats();
                     }
+                  },
+                ),
+                _menuTile(
+                  icon: Icons.warning_amber_outlined,
+                  title: 'Manage Safety Alerts',
+                  subtitle: 'View, edit, and delete reported alerts',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminAlertsPage(),
+                      ),
+                    );
                   },
                 ),
               ],

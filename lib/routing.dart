@@ -45,7 +45,7 @@ Future<List<PlaceResult>> searchPlaces(String query) async {
 }
 
 class RouteOption {
-  final String label; // "Safest Route", "Fastest Route", "Shortest Route"
+  final String label;
   final double distanceKm;
   final int durationMin;
 
@@ -146,11 +146,11 @@ Future<List<RouteOption>> fetchRoutes(LatLng origin, LatLng destination) async {
 
   final remaining = parsed.length > 1 ? parsed.sublist(1) : parsed;
 
-  // "Fastest" = whichever remaining candidate has the shortest duration.
+
   final fastest = remaining.reduce(
           (a, b) => a.durationMin <= b.durationMin ? a : b);
 
-  // "Shortest" = whichever remaining candidate has the shortest distance.
+
   final shortest = remaining.reduce(
           (a, b) => a.distanceKm <= b.distanceKm ? a : b);
 
@@ -159,21 +159,21 @@ Future<List<RouteOption>> fetchRoutes(LatLng origin, LatLng destination) async {
       label: 'Safest Route',
       distanceKm: safest.distanceKm,
       durationMin: safest.durationMin,
-      safetyScore: 92, // placeholder — see TODO on RouteOption
+      safetyScore: 92,
       points: safest.points,
     ),
     RouteOption(
       label: 'Fastest Route',
       distanceKm: fastest.distanceKm,
       durationMin: fastest.durationMin,
-      safetyScore: 70, // placeholder — see TODO on RouteOption
+      safetyScore: 70,
       points: fastest.points,
     ),
     RouteOption(
       label: 'Shortest Route',
       distanceKm: shortest.distanceKm,
       durationMin: shortest.durationMin,
-      safetyScore: 65, // placeholder — see TODO on RouteOption
+      safetyScore: 65,
       points: shortest.points,
     ),
   ];

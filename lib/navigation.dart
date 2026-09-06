@@ -30,7 +30,7 @@ class NavigationPage extends StatelessWidget {
         children: [
           Expanded(
             child: LiveLocationMap(
-              height: null, // fill all space Expanded gives it
+              height: null,
               borderRadius: 0,
               interactive: true,
               polylines: [
@@ -51,7 +51,7 @@ class NavigationPage extends StatelessWidget {
             ),
           ),
 
-          // Fixed bottom bar: ETA, distance, predicted arrival clock time.
+
           SafeArea(
             top: false,
             child: Container(

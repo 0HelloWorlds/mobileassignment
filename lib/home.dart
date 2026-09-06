@@ -40,7 +40,7 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
   }
 
-  // Called by LiveLocationMap every time a new GPS fix comes in.
+
   void _onLocationChanged(LatLng position) async {
     _currentPosition = position;
     final movedFar = _lastGeocodedPosition == null ||
@@ -73,7 +73,6 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -104,7 +103,6 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 16,),
 
-                // Search Bar
                 GestureDetector(
                   onTap: (){
                     Navigator.push(
@@ -138,7 +136,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 16),
 
-                // Current location card
+
                 InkWell(
                   onTap: () => widget.onNavigateToTab?.call(1),
                   child: Container(
@@ -173,7 +171,6 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 16),
 
-                // Mini Map Preview Box - real, live-updating OpenStreetMap
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
@@ -189,7 +186,6 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 20),
 
-                //Nearby Alert Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -213,7 +209,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-  // Builds the top 3 nearest alert cards from the shared alerts store.
+
   List<Widget> _buildNearbyAlertCards() {
     final position = _currentPosition;
     final List<SafetyAlert> nearest = position != null
@@ -261,7 +257,7 @@ class _HomePageState extends State<HomePage> {
     return cards;
   }
 
-//Helper function to build alert items
+
   Widget _buildActionButton(BuildContext context, IconData icon, String label, Color color) {
     return GestureDetector(
       onTap: () {
@@ -286,7 +282,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-//Helper function to build alert items
   Widget _buildAlertCard({
     required IconData icon,
     required Color iconColor,

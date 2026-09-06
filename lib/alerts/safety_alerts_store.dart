@@ -3,9 +3,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:mob_ass/auth/auth_service.dart';
 import 'package:mob_ass/models/safety_alert.dart';
 
-/// App-wide store of safety alerts, backed by Supabase's `safetyalerts`
-/// table. Screens listen to this via ChangeNotifier and it stays in sync
-/// with the database.
+
 class SafetyAlertsStore extends ChangeNotifier {
   SafetyAlertsStore._internal();
 
@@ -21,8 +19,7 @@ class SafetyAlertsStore extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  /// Fetches all alerts from Supabase. Call this once when the app starts,
-  /// and again any time you want to force a refresh (e.g. pull-to-refresh).
+
   Future<void> loadAlerts() async {
     _isLoading = true;
     _error = null;
@@ -45,7 +42,7 @@ class SafetyAlertsStore extends ChangeNotifier {
     }
   }
 
-  /// Inserts a new alert into Supabase, then refreshes the local list.
+
   Future<void> reportAlert({
     required String typeId,
     required String title,
@@ -68,8 +65,7 @@ class SafetyAlertsStore extends ChangeNotifier {
     await loadAlerts();
   }
 
-  /// Updates an existing alert's editable fields. Only succeeds if the
-  /// current user is an admin — enforced by the database's RLS policy.
+
   Future<void> updateAlert(
       String id, {
         String? typeId,
@@ -91,14 +87,13 @@ class SafetyAlertsStore extends ChangeNotifier {
     await loadAlerts();
   }
 
-  /// Deletes an alert. Only succeeds if the current user is an admin —
-  /// enforced by the database's RLS policy.
+
   Future<void> deleteAlert(String id) async {
     await supabase.from('safetyalerts').delete().eq('id', id);
     await loadAlerts();
   }
 
-  /// Alerts within [radiusMeters] of [from], sorted nearest first.
+
   List<MapEntry<SafetyAlert, double>> nearby(
       LatLng from, {
         double radiusMeters = 5000,

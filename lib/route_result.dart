@@ -119,7 +119,7 @@ class _RouteResultPageState extends State<RouteResultPage> {
 
   void _fitMapToRoute(List<LatLng> points) {
     if (points.isEmpty) return;
-    // Wait a frame so the map has a size before we try to fit bounds to it.
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final bounds = LatLngBounds.fromPoints(points);
       _mapController.fitCamera(

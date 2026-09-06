@@ -1,6 +1,6 @@
 import 'package:latlong2/latlong.dart';
 
-/// How urgent/dangerous a safety alert is.
+
 enum AlertSeverity { low, medium, high }
 
 AlertSeverity _severityFromString(String? value) {
@@ -15,7 +15,7 @@ AlertSeverity _severityFromString(String? value) {
   }
 }
 
-/// A single safety alert, backed by the `safetyalerts` table in Supabase.
+
 class SafetyAlert {
   final String id;
   final String typeId;
@@ -39,13 +39,9 @@ class SafetyAlert {
     this.severity = AlertSeverity.medium,
   });
 
-  /// True if this alert was submitted by a real user (has a reporter id),
-  /// as opposed to being seeded by an admin/system process.
+
   bool get userReported => reportedBy != null;
 
-  /// Converts this alert into the column shape Supabase expects for an
-  /// insert/update. `id` and `created_at` are left out — Supabase fills
-  /// those in automatically on insert.
   Map<String, dynamic> toInsertJson() => {
     'type': typeId,
     'title': title,
@@ -57,7 +53,7 @@ class SafetyAlert {
     'reported_by': reportedBy,
   };
 
-  /// Rebuilds a [SafetyAlert] from a row returned by Supabase.
+
   factory SafetyAlert.fromJson(Map<String, dynamic> json) => SafetyAlert(
     id: json['id'] as String,
     typeId: json['type'] as String,

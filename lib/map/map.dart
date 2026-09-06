@@ -1,57 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-//import 'package:latlong2/latlong.dart';
 import 'package:mob_ass/map/map_layer.dart';
 import 'package:mob_ass/map/live_location.dart';
 import 'package:mob_ass/models/safety_alert.dart';
 import 'package:mob_ass/alerts/safety_alerts_store.dart';
 import 'package:mob_ass/alerts/alert_detail_page.dart';
 
-/*class _MockAlert {
-  final String type;
-  final String title;
-  final LatLng position;
-
-  const _MockAlert({
-    required this.type,
-    required this.title,
-    required this.position,
-  });
-}
-
-final List<_MockAlert> _mockAlerts = [
-  const _MockAlert(
-    type: 'accident',
-    title: 'Accident - Jalan Genting Klang',
-    position: LatLng(3.1958, 101.7263),
-  ),
-  const _MockAlert(
-    type: 'accident',
-    title: 'Accident - Jalan Setapak',
-    position: LatLng(3.1885, 101.7180),
-  ),
-  const _MockAlert(
-    type: 'flood',
-    title: 'Flood Warning - Wangsa Maju',
-    position: LatLng(3.2030, 101.7340),
-  ),
-  const _MockAlert(
-    type: 'weather',
-    title: 'Heavy Rain Expected',
-    position: LatLng(3.1900, 101.7300),
-  ),
-  const _MockAlert(
-    type: 'road_closed',
-    title: 'Road Closed - Jalan Danau',
-    position: LatLng(3.1990, 101.7200),
-  ),
-  const _MockAlert(
-    type: 'construction',
-    title: 'Construction Zone - Jalan Genting Kelang',
-    position: LatLng(3.1930, 101.7230),
-  ),
-];
-*/
 class MapPage extends StatefulWidget {
   const MapPage({super.key});
 
