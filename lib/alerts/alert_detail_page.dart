@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mob_ass/map/map_layer.dart';
 import 'package:mob_ass/models/safety_alert.dart';
+import 'package:mob_ass/auth/auth_service.dart';
+import 'package:mob_ass/alerts/safety_alerts_store.dart';
 
 class AlertDetailPage extends StatelessWidget {
   final SafetyAlert alert;
@@ -47,6 +49,11 @@ class AlertDetailPage extends StatelessWidget {
     final option = _optionFor(alert.typeId);
     final severityColor = _severityColor(alert.severity);
 
+
+    final currentUserId = supabase.auth.currentUser?.id;
+    final isOwner =
+        currentUserId != null && alert.reportedBy == currentUserId;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -59,6 +66,43 @@ class AlertDetailPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: alert.status == 'resolved'
+                    ? Colors.green.withOpacity(0.1)
+                    : Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    alert.status == 'resolved'
+                        ? Icons.check_circle
+                        : Icons.warning_amber_rounded,
+                    color: alert.status == 'resolved'
+                        ? Colors.green
+                        : Colors.orange,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    alert.status == 'resolved'
+                        ? 'This alert has been resolved'
+                        : 'This alert is still active',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: alert.status == 'resolved'
+                          ? Colors.green
+                          : Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -84,11 +128,13 @@ class AlertDetailPage extends StatelessWidget {
                       children: [
                         Text(
                           alert.title,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: severityColor.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(20),
@@ -119,7 +165,8 @@ class AlertDetailPage extends StatelessWidget {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(alert.description!, style: const TextStyle(fontSize: 14)),
+                child: Text(alert.description!,
+                    style: const TextStyle(fontSize: 14)),
               ),
               const SizedBox(height: 16),
             ],
@@ -134,12 +181,15 @@ class AlertDetailPage extends StatelessWidget {
                 children: [
                   _infoRow(Icons.category_outlined, 'Type', option.label),
                   const Divider(height: 1),
-                  _infoRow(Icons.access_time, 'Reported', _relativeTime(alert.reportedAt)),
+                  _infoRow(Icons.access_time, 'Reported',
+                      _relativeTime(alert.reportedAt)),
                   const Divider(height: 1),
                   _infoRow(
                     Icons.person_outline,
                     'Source',
-                    alert.userReported ? 'Reported by a traveler' : 'Official alert',
+                    alert.userReported
+                        ? 'Reported by a traveler'
+                        : 'Official alert',
                   ),
                   const Divider(height: 1),
                   _infoRow(
@@ -148,9 +198,74 @@ class AlertDetailPage extends StatelessWidget {
                     '${alert.position.latitude.toStringAsFixed(4)}, '
                         '${alert.position.longitude.toStringAsFixed(4)}',
                   ),
+                  const Divider(height: 1),
+                  _infoRow(
+                    Icons.check_circle_outline,
+                    'Status',
+                    alert.status == 'resolved' ? 'Resolved' : 'Active',
+                  ),
                 ],
               ),
             ),
+
+
+            if (isOwner) ...[
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Delete My Report'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Delete Report?'),
+                        content: const Text(
+                          'Are you sure you want to delete this report?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: const Text(
+                              'Delete',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmed != true) return;
+
+                    try {
+                      await SafetyAlertsStore.instance.deleteAlert(alert.id);
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Failed to delete report: $e'),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -161,7 +276,8 @@ class AlertDetailPage extends StatelessWidget {
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(
       text,
-      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey),
+      style: const TextStyle(
+          fontWeight: FontWeight.bold, fontSize: 13, color: Colors.grey),
     ),
   );
 
@@ -177,7 +293,8 @@ class AlertDetailPage extends StatelessWidget {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            style:
+            const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ),
       ],
