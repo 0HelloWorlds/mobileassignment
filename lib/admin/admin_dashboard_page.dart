@@ -5,6 +5,7 @@ import 'package:mob_ass/admin/admin_users_page.dart';
 import 'package:mob_ass/admin/create_admin_page.dart';
 import 'package:mob_ass/admin/admin_account_page.dart';
 import 'package:mob_ass/admin/admin_alerts_page.dart';
+import 'package:mob_ass/admin/admin_report_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   final AppUser admin;
@@ -135,6 +136,19 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const AdminAlertsPage(),
+                      ),
+                    );
+                  },
+                ),
+                _menuTile(
+                  icon: Icons.bar_chart_outlined,
+                  title: 'Generate Reports',
+                  subtitle: 'View system statistics and reports',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminReportPage(),
                       ),
                     );
                   },
