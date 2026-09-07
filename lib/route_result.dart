@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:location/location.dart' as loc;
 import 'package:mob_ass/routing.dart';
 import 'package:mob_ass/navigation.dart';
+import 'package:mob_ass/alerts/safety_alerts_store.dart';
 
 class RouteResultPage extends StatefulWidget {
   const RouteResultPage({super.key});
@@ -14,29 +15,50 @@ class RouteResultPage extends StatefulWidget {
 
 class _RouteResultPageState extends State<RouteResultPage> {
   final TextEditingController _destinationController = TextEditingController();
+  final TextEditingController _originController = TextEditingController();
   final MapController _mapController = MapController();
 
   LatLng? _origin;
   LatLng? _destination;
 
+  bool _useCurrentLocationAsOrigin = true;
+
   List<PlaceResult> _searchResults = [];
   bool _searching = false;
+
+  List<PlaceResult> _originSearchResults = [];
+  bool _originSearching = false;
 
   List<RouteOption> _routes = [];
   int _selectedIndex = 0;
   bool _loadingRoutes = false;
   String? _errorMessage;
 
+  int _fetchToken = 0;
+
   @override
   void initState() {
     super.initState();
     _loadCurrentLocation();
+    SafetyAlertsStore.instance.loadAlerts();
   }
 
   @override
   void dispose() {
     _destinationController.dispose();
+    _originController.dispose();
     super.dispose();
+  }
+
+  void _moveMapToOrigin() {
+    final origin = _origin;
+    if (origin == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        _mapController.move(origin, _mapController.camera.zoom);
+      } catch (_) {
+      }
+    });
   }
 
   Future<void> _loadCurrentLocation() async {
@@ -63,6 +85,7 @@ class _RouteResultPageState extends State<RouteResultPage> {
     setState(() {
       _origin = LatLng(data.latitude!, data.longitude!);
     });
+    _moveMapToOrigin();
   }
 
   Future<void> _onSearchChanged(String query) async {
@@ -79,6 +102,48 @@ class _RouteResultPageState extends State<RouteResultPage> {
     });
   }
 
+  void _startEditingOrigin() {
+    setState(() {
+      _useCurrentLocationAsOrigin = false;
+      _originController.clear();
+      _originSearchResults = [];
+    });
+  }
+
+  Future<void> _useCurrentLocationForOrigin() async {
+    setState(() {
+      _useCurrentLocationAsOrigin = true;
+      _originController.clear();
+      _originSearchResults = [];
+    });
+    await _loadCurrentLocation();
+    await _fetchRoutes();
+  }
+
+  Future<void> _onOriginSearchChanged(String query) async {
+    if (query.trim().length < 3) {
+      setState(() => _originSearchResults = []);
+      return;
+    }
+    setState(() => _originSearching = true);
+    final results = await searchPlaces(query);
+    if (!mounted) return;
+    setState(() {
+      _originSearchResults = results;
+      _originSearching = false;
+    });
+  }
+
+  Future<void> _selectOrigin(PlaceResult place) async {
+    setState(() {
+      _origin = place.position;
+      _originController.text = place.displayName;
+      _originSearchResults = [];
+    });
+    _moveMapToOrigin();
+    await _fetchRoutes();
+  }
+
   Future<void> _selectDestination(PlaceResult place) async {
     setState(() {
       _destination = place.position;
@@ -93,6 +158,8 @@ class _RouteResultPageState extends State<RouteResultPage> {
     final destination = _destination;
     if (origin == null || destination == null) return;
 
+    final requestToken = ++_fetchToken;
+
     setState(() {
       _loadingRoutes = true;
       _errorMessage = null;
@@ -100,8 +167,13 @@ class _RouteResultPageState extends State<RouteResultPage> {
     });
 
     try {
-      final routes = await fetchRoutes(origin, destination);
+      final routes = await fetchRoutes(
+        origin,
+        destination,
+        alerts: SafetyAlertsStore.instance.alerts,
+      );
       if (!mounted) return;
+      if (requestToken != _fetchToken) return;
       setState(() {
         _routes = routes;
         _selectedIndex = 0;
@@ -110,6 +182,7 @@ class _RouteResultPageState extends State<RouteResultPage> {
       _fitMapToRoute(routes.first.points);
     } catch (e) {
       if (!mounted) return;
+      if (requestToken != _fetchToken) return;
       setState(() {
         _errorMessage = 'Could not find a route. Please try again.';
         _loadingRoutes = false;
@@ -198,21 +271,81 @@ class _RouteResultPageState extends State<RouteResultPage> {
                 const Text('From',
                     style: TextStyle(fontSize: 11, color: Colors.grey)),
                 const SizedBox(height: 4),
-                Row(
-                  children: [
-                    const Icon(Icons.circle, color: Colors.green, size: 12),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _origin == null
-                            ? 'Getting current location...'
-                            : 'Current Location',
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                        overflow: TextOverflow.ellipsis,
+                if (_useCurrentLocationAsOrigin)
+                  GestureDetector(
+                    onTap: _startEditingOrigin,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.circle, color: Colors.green, size: 12),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _origin == null
+                                ? 'Getting current location...'
+                                : 'Current Location',
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const Icon(Icons.edit, color: Colors.grey, size: 14),
+                      ],
+                    ),
+                  )
+                else
+                  Row(
+                    children: [
+                      const Icon(Icons.circle, color: Colors.green, size: 12),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _originController,
+                          autofocus: true,
+                          decoration: const InputDecoration(
+                            hintText: 'Search starting point',
+                            border: InputBorder.none,
+                            isDense: true,
+                          ),
+                          onChanged: _onOriginSearchChanged,
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: _useCurrentLocationForOrigin,
+                        child: const Icon(Icons.my_location,
+                            color: Colors.blue, size: 16),
+                      ),
+                    ],
+                  ),
+                if (_originSearching)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: LinearProgressIndicator(),
+                  ),
+                if (_originSearchResults.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Column(
+                        children: _originSearchResults.map((place) {
+                          return ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.place_outlined, size: 18),
+                            title: Text(
+                              place.displayName,
+                              style: const TextStyle(fontSize: 13),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onTap: () => _selectOrigin(place),
+                          );
+                        }).toList(),
                       ),
                     ),
-                  ],
-                ),
+                  ),
                 const SizedBox(height: 12),
                 const Text('To',
                     style: TextStyle(fontSize: 11, color: Colors.grey)),
@@ -267,14 +400,6 @@ class _RouteResultPageState extends State<RouteResultPage> {
                   ),
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey.shade300),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.swap_vert, size: 18),
           ),
         ],
       ),
@@ -347,7 +472,6 @@ class _RouteResultPageState extends State<RouteResultPage> {
 
   Widget _buildRouteCard(RouteOption route, int index) {
     final selected = index == _selectedIndex;
-    final isSafest = route.label == 'Safest Route';
 
     return GestureDetector(
       onTap: () {
@@ -364,42 +488,18 @@ class _RouteResultPageState extends State<RouteResultPage> {
             width: 2,
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      route.label,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    if (isSafest) ...[
-                      const SizedBox(width: 6),
-                      const Icon(Icons.verified, color: Colors.green, size: 16),
-                    ],
-                  ],
-                ),
-                const Icon(Icons.chevron_right, color: Colors.grey),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                _buildMetric('Distance', '${route.distanceKm.toStringAsFixed(1)} km'),
-                _buildMetric('ETA', '${route.durationMin} mins'),
-                _buildMetric(
-                  'Safety Score',
-                  '${route.safetyScore}/100',
-                  valueColor: route.safetyScore >= 85
-                      ? Colors.green
-                      : route.safetyScore >= 70
-                      ? Colors.orange
-                      : Colors.red,
-                ),
-              ],
+            _buildMetric('Distance', '${route.distanceKm.toStringAsFixed(1)} km'),
+            _buildMetric('ETA', '${route.durationMin} mins'),
+            _buildMetric(
+              'Safety Score',
+              '${route.safetyScore}/100',
+              valueColor: route.safetyScore >= 85
+                  ? Colors.green
+                  : route.safetyScore >= 70
+                  ? Colors.orange
+                  : Colors.red,
             ),
           ],
         ),

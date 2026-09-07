@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
+import 'package:mob_ass/models/safety_alert.dart';
 
 const _userAgent = 'com.example.mob_ass (Safe Route Planner)';
-
 
 class PlaceResult {
   final String displayName;
@@ -122,7 +122,46 @@ LatLng _detourWaypoint(LatLng origin, LatLng destination, {required bool left}) 
   return distanceCalc.offset(midpoint, offsetKm * 1000, perpendicularBearing);
 }
 
-Future<List<RouteOption>> fetchRoutes(LatLng origin, LatLng destination) async {
+double _severityWeight(AlertSeverity severity) {
+  switch (severity) {
+    case AlertSeverity.low:
+      return 1;
+    case AlertSeverity.medium:
+      return 2;
+    case AlertSeverity.high:
+      return 3;
+  }
+}
+
+int _computeSafetyScore(List<LatLng> routePoints, List<SafetyAlert> alerts) {
+  if (alerts.isEmpty || routePoints.isEmpty) return 100;
+
+  const distanceCalc = Distance();
+  const bufferMeters = 300.0;
+
+  final sampleStep = (routePoints.length / 60).ceil().clamp(1, 20);
+  final sampled = [
+    for (var i = 0; i < routePoints.length; i += sampleStep) routePoints[i],
+  ];
+
+  double penalty = 0;
+  for (final alert in alerts) {
+    for (final point in sampled) {
+      if (distanceCalc(point, alert.position) <= bufferMeters) {
+        penalty += _severityWeight(alert.severity) * 6;
+        break;
+      }
+    }
+  }
+
+  return (100 - penalty).clamp(0, 100).round();
+}
+
+Future<List<RouteOption>> fetchRoutes(
+    LatLng origin,
+    LatLng destination, {
+      List<SafetyAlert> alerts = const [],
+    }) async {
   final parsed = await _fetchOsrmSingle([origin, destination], alternatives: true);
   if (parsed.isEmpty) {
     throw Exception('No route found');
@@ -142,39 +181,49 @@ Future<List<RouteOption>> fetchRoutes(LatLng origin, LatLng destination) async {
     }
   }
 
-  final safest = parsed.first;
+  final scored = parsed
+      .map((route) => (
+  route: route,
+  score: _computeSafetyScore(route.points, alerts),
+  ))
+      .toList();
 
-  final remaining = parsed.length > 1 ? parsed.sublist(1) : parsed;
+  scored.sort((a, b) => b.score.compareTo(a.score));
+  final safest = scored.first;
 
+  final afterSafest = scored.length > 1 ? scored.sublist(1) : scored;
 
-  final fastest = remaining.reduce(
-          (a, b) => a.durationMin <= b.durationMin ? a : b);
+  final fastest = afterSafest.reduce(
+          (a, b) => a.route.durationMin <= b.route.durationMin ? a : b);
 
+  final afterFastest = afterSafest.length > 1
+      ? afterSafest.where((e) => e != fastest).toList()
+      : afterSafest;
 
-  final shortest = remaining.reduce(
-          (a, b) => a.distanceKm <= b.distanceKm ? a : b);
+  final shortest = afterFastest.reduce(
+          (a, b) => a.route.distanceKm <= b.route.distanceKm ? a : b);
 
   return [
     RouteOption(
       label: 'Safest Route',
-      distanceKm: safest.distanceKm,
-      durationMin: safest.durationMin,
-      safetyScore: 92,
-      points: safest.points,
+      distanceKm: safest.route.distanceKm,
+      durationMin: safest.route.durationMin,
+      safetyScore: safest.score,
+      points: safest.route.points,
     ),
     RouteOption(
       label: 'Fastest Route',
-      distanceKm: fastest.distanceKm,
-      durationMin: fastest.durationMin,
-      safetyScore: 70,
-      points: fastest.points,
+      distanceKm: fastest.route.distanceKm,
+      durationMin: fastest.route.durationMin,
+      safetyScore: fastest.score,
+      points: fastest.route.points,
     ),
     RouteOption(
       label: 'Shortest Route',
-      distanceKm: shortest.distanceKm,
-      durationMin: shortest.durationMin,
-      safetyScore: 65,
-      points: shortest.points,
+      distanceKm: shortest.route.distanceKm,
+      durationMin: shortest.route.durationMin,
+      safetyScore: shortest.score,
+      points: shortest.route.points,
     ),
   ];
 }

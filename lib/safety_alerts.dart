@@ -6,6 +6,7 @@ import 'package:mob_ass/map/map_layer.dart';
 import 'package:mob_ass/models/safety_alert.dart';
 import 'package:mob_ass/alerts/report_alert_page.dart';
 import 'package:mob_ass/alerts/safety_alerts_store.dart';
+import 'package:mob_ass/alerts/alert_detail_page.dart';
 
 class SafetyAlertPage extends StatefulWidget {
   const SafetyAlertPage({super.key});
@@ -129,7 +130,14 @@ class _SafetyAlertPageState extends State<SafetyAlertPage> {
     }
   }
 
-  Future<void> _openReportPage() async {
+  void _openAlertDetails(SafetyAlert alert){
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => AlertDetailPage(alert: alert)),
+    );
+  }
+
+  Future<void> _openReportPage() async{
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(builder: (context) => const ReportAlertPage()),
@@ -182,62 +190,65 @@ class _SafetyAlertPageState extends State<SafetyAlertPage> {
             if (alert.userReported) 'Reported by traveler',
           ];
 
-          return Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border(left: BorderSide(color: severityColor, width: 4)),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(option.icon, color: option.color, size: 28),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              alert.title,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 14),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: severityColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              _severityLabel(alert.severity),
-                              style: TextStyle(
-                                color: severityColor,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
+          return GestureDetector(
+            onTap: () => _openAlertDetails(alert),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border(left: BorderSide(color: severityColor, width: 4)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(option.icon, color: option.color, size: 28),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                alert.title,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 14),
                               ),
                             ),
-                          ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: severityColor.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                _severityLabel(alert.severity),
+                                style: TextStyle(
+                                  color: severityColor,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          metaParts.join(' • '),
+                          style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                        if (alert.description != null) ...[
+                          const SizedBox(height: 4),
+                          Text(alert.description!, style: const TextStyle(fontSize: 12)),
                         ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        metaParts.join(' • '),
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                      if (alert.description != null) ...[
-                        const SizedBox(height: 4),
-                        Text(alert.description!, style: const TextStyle(fontSize: 12)),
                       ],
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },

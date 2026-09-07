@@ -3,6 +3,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:mob_ass/route_result.dart';
 import 'package:mob_ass/map/live_location.dart';
 import 'package:mob_ass/map/geocoding.dart';
+import 'package:mob_ass/insight.dart';
 
 import 'package:mob_ass/map/map_layer.dart';
 import 'package:mob_ass/models/safety_alert.dart';
@@ -40,7 +41,6 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
   }
 
-
   void _onLocationChanged(LatLng position) async {
     _currentPosition = position;
     final movedFar = _lastGeocodedPosition == null ||
@@ -64,12 +64,12 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-        body: SafeArea(
-          child: RefreshIndicator(
-              onRefresh: () => _alertsStore.loadAlerts(),
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16.0),
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => _alertsStore.loadAlerts(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -77,8 +77,16 @@ class _HomePageState extends State<HomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      onPressed: (){},
-                      icon: const Icon(Icons.menu),),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const InsightsPage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.bar_chart, color: Colors.blueGrey),
+                    ),
                     Column(
                       children: const [
                         Text(
@@ -95,10 +103,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.notifications_none, color: Colors.red),
-                      onPressed: (){},
-                    ),
+                    const SizedBox(width: 48),
                   ],
                 ),
                 const SizedBox(height: 16,),
@@ -135,7 +140,6 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-
 
                 InkWell(
                   onTap: () => widget.onNavigateToTab?.call(1),
@@ -205,7 +209,7 @@ class _HomePageState extends State<HomePage> {
               ],
             ),
           ),
-          ),
+        ),
       ),
     );
   }
@@ -256,7 +260,6 @@ class _HomePageState extends State<HomePage> {
     if (cards.isNotEmpty) cards.removeLast();
     return cards;
   }
-
 
   Widget _buildActionButton(BuildContext context, IconData icon, String label, Color color) {
     return GestureDetector(

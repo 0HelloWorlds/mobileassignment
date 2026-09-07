@@ -4,6 +4,7 @@ import 'package:location/location.dart' as loc;
 import 'package:mob_ass/map/map_layer.dart';
 import 'package:mob_ass/models/safety_alert.dart';
 import 'package:mob_ass/alerts/safety_alerts_store.dart';
+import 'package:mob_ass/auth/auth_service.dart';
 
 class ReportAlertPage extends StatefulWidget {
   const ReportAlertPage({super.key});
@@ -64,6 +65,14 @@ class _ReportAlertPageState extends State<ReportAlertPage> {
 
   Future<void> _submit() async {
     if (_titleController.text.trim().isEmpty || _position == null) return;
+
+    if (!isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please log in before submitting a report.')),
+      );
+      return;
+    }
+
     setState(() => _submitting = true);
 
     try {
