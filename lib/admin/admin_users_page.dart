@@ -32,13 +32,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final data = await supabase
-          .from('user')
-          .select()
-          .eq('role', 'user')
-          .order('created_at', ascending: false);
-
-      final users = (data as List).map((e) => AppUser.fromJson(e)).toList();
+      final response = await supabase.functions.invoke('admin-get-users', body: {'role': 'user'});
+      final users = (response.data['users'] as List).map((e) => AppUser.fromJson(e)).toList();
       if (!mounted) return;
       setState(() {
         _allUsers = users;
@@ -46,8 +41,7 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to load users: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to load users: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -69,12 +63,14 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
   Future<void> _toggleStatus(AppUser user) async {
     final newStatus = user.isActive ? 'inactive' : 'active';
     try {
-      await supabase.from('user').update({'status': newStatus}).eq('user_id', user.id);
+      await supabase.functions.invoke('admin-update-user', body: {
+        'target_user_id': user.id,
+        'status': newStatus,
+      });
       _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update status: $e')));
     }
   }
 

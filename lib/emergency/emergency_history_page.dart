@@ -23,6 +23,7 @@ class EmergencyHistoryPage extends StatefulWidget {
 class _EmergencyHistoryPageState extends State<EmergencyHistoryPage> {
   List<EmergencyRequest> _requests = [];
   bool _loading = true;
+  String? _filterType;
 
   @override
   void initState() {
@@ -30,23 +31,18 @@ class _EmergencyHistoryPageState extends State<EmergencyHistoryPage> {
     _load();
   }
 
-  Future<void> _load() async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) {
-      setState(() => _loading = false);
-      return;
-    }
+  List<EmergencyRequest> get _filteredRequests {
+    if (_filterType == null) return _requests;
+    return _requests.where((r) => r.emergencyType == _filterType).toList();
+  }
 
+  Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final data = await supabase
-          .from('emergency_requests')
-          .select()
-          .eq('user_id', userId)
-          .order('created_at', ascending: false);
-
-      final requests =
-      (data as List).map((e) => EmergencyRequest.fromJson(e)).toList();
+      final response = await supabase.functions.invoke('get-emergency-requests');
+      final requests = (response.data['requests'] as List)
+          .map((e) => EmergencyRequest.fromJson(e))
+          .toList();
       if (!mounted) return;
       setState(() => _requests = requests);
     } catch (e) {
@@ -55,6 +51,40 @@ class _EmergencyHistoryPageState extends State<EmergencyHistoryPage> {
           .showSnackBar(SnackBar(content: Text('Failed to load history: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _deleteRequest(EmergencyRequest request) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Record'),
+        content: const Text('Remove this emergency record from your history?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      final response = await supabase.functions.invoke('delete-emergency-request', body: {
+        'request_id': request.requestId,
+      });
+      if (response.data['success'] == true) {
+        await _load();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed to delete record: $e')));
     }
   }
 
@@ -140,6 +170,25 @@ class _EmergencyHistoryPageState extends State<EmergencyHistoryPage> {
                 ),
               ),
             ],
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deleteRequest(request);
+                },
+                icon: const Icon(Icons.delete_outline, size: 18),
+                label: const Text('Delete Record'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  side: BorderSide(color: Colors.red.withOpacity(0.5)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -177,8 +226,40 @@ class _EmergencyHistoryPageState extends State<EmergencyHistoryPage> {
     return _formatFullDate(date);
   }
 
+  Widget _buildFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            ChoiceChip(
+              label: const Text('All'),
+              selected: _filterType == null,
+              onSelected: (_) => setState(() => _filterType = null),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: const Text('SOS'),
+              selected: _filterType == 'SOS',
+              onSelected: (_) => setState(() => _filterType = 'SOS'),
+            ),
+            const SizedBox(width: 8),
+            ChoiceChip(
+              label: const Text('Vehicle Breakdown'),
+              selected: _filterType == 'Vehicle Breakdown',
+              onSelected: (_) => setState(() => _filterType = 'Vehicle Breakdown'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filtered = _filteredRequests;
+
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
@@ -190,73 +271,84 @@ class _EmergencyHistoryPageState extends State<EmergencyHistoryPage> {
       body: SafeArea(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
-            : _requests.isEmpty
-            ? _buildEmptyState()
-            : RefreshIndicator(
-          onRefresh: _load,
-          child: ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: _requests.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, index) {
-              final request = _requests[index];
-              final color = _colorFor(request.emergencyType);
-              return Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _showDetails(request),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
+            : Column(
+          children: [
+            _buildFilterBar(),
+            Expanded(
+              child: filtered.isEmpty
+                  ? _buildEmptyState()
+                  : RefreshIndicator(
+                onRefresh: _load,
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: filtered.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 10),
+                  itemBuilder: (context, index) {
+                    final request = filtered[index];
+                    final color = _colorFor(request.emergencyType);
+                    return Material(
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => _showDetails(request),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.12),
-                            shape: BoxShape.circle,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: Colors.grey.shade200),
                           ),
-                          child: Icon(_iconFor(request.emergencyType),
-                              color: color, size: 22),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Row(
                             children: [
-                              Text(request.emergencyType,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold, fontSize: 14)),
-                              const SizedBox(height: 3),
-                              Text(_formatListDate(request.createdAt),
-                                  style: const TextStyle(
-                                      color: Colors.grey, fontSize: 12)),
-                              if (request.address != null) ...[
-                                const SizedBox(height: 3),
-                                Text(
-                                  request.address!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                      color: Colors.black54, fontSize: 12),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: color.withOpacity(0.12),
+                                  shape: BoxShape.circle,
                                 ),
-                              ],
+                                child: Icon(_iconFor(request.emergencyType),
+                                    color: color, size: 22),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(request.emergencyType,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold, fontSize: 14)),
+                                    const SizedBox(height: 3),
+                                    Text(_formatListDate(request.createdAt),
+                                        style: const TextStyle(
+                                            color: Colors.grey, fontSize: 12)),
+                                    if (request.address != null) ...[
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        request.address!,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                            color: Colors.black54, fontSize: 12),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline,
+                                    size: 20, color: Colors.red),
+                                onPressed: () => _deleteRequest(request),
+                              ),
                             ],
                           ),
                         ),
-                        const Icon(Icons.chevron_right, color: Colors.grey),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -268,13 +360,15 @@ class _EmergencyHistoryPageState extends State<EmergencyHistoryPage> {
       child: ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
-          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.15),
           Icon(Icons.history, size: 56, color: Colors.grey[350]),
           const SizedBox(height: 12),
-          const Center(
+          Center(
             child: Text(
-              'No past emergency requests',
-              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
+              _filterType == null
+                  ? 'No past emergency requests'
+                  : 'No $_filterType records',
+              style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w600),
             ),
           ),
           const SizedBox(height: 4),

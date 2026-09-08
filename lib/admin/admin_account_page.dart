@@ -34,17 +34,12 @@ class _AdminAccountsPageState extends State<AdminAccountsPage> {
   }
 
   Future<void> _load() async {
+
     setState(() => _loading = true);
 
     try {
-      final data = await supabase
-          .from('user')
-          .select()
-          .eq('role', 'admin')
-          .order('created_at', ascending: false);
-
-      final admins =
-      (data as List).map((e) => AppUser.fromJson(e)).toList();
+      final response = await supabase.functions.invoke('admin-get-users', body: {'role': 'admin'});
+      final admins = (response.data['users'] as List).map((e) => AppUser.fromJson(e)).toList();
 
       final query = _searchController.text.trim().toLowerCase();
 
@@ -99,22 +94,15 @@ class _AdminAccountsPageState extends State<AdminAccountsPage> {
 
   Future<void> _toggleStatus(AppUser admin) async {
     final newStatus = admin.isActive ? 'inactive' : 'active';
-
     try {
-      await supabase
-          .from('user')
-          .update({'status': newStatus})
-          .eq('user_id', admin.id);
-
+      await supabase.functions.invoke('admin-update-user', body: {
+        'target_user_id': admin.id,
+        'status': newStatus,
+      });
       await _load();
     } catch (e) {
       if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update admin status: $e'),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to update admin status: $e')));
     }
   }
 

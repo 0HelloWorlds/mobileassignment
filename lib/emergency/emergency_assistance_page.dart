@@ -113,17 +113,14 @@ class _EmergencyAssistancePageState extends State<EmergencyAssistancePage> {
   }
 
   Future<void> _logIncident() async {
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return;
     try {
-      await supabase.from('emergency_requests').insert({
-        'user_id': userId,
+      await supabase.functions.invoke('create-emergency-request', body: {
         'emergency_type': _selectedType ?? 'SOS',
         'latitude': _currentPosition?.latitude,
         'longitude': _currentPosition?.longitude,
         'address': _currentAddress,
       });
-    } catch  (e) {
+    } catch (e) {
       debugPrint('Failed to save emergency history: $e');
     }
   }

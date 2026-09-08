@@ -4,6 +4,8 @@ import 'package:mob_ass/models/app_user.dart';
 import 'package:mob_ass/admin/admin_users_page.dart';
 import 'package:mob_ass/admin/create_admin_page.dart';
 import 'package:mob_ass/admin/admin_account_page.dart';
+import 'package:mob_ass/admin/admin_alerts_page.dart';
+import 'package:mob_ass/admin/admin_report_page.dart';
 
 class AdminDashboardPage extends StatefulWidget {
   final AppUser admin;
@@ -27,15 +29,11 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
 
   Future<void> _loadStats() async {
     setState(() => _loading = true);
-    final data = await supabase
-        .from('user')
-        .select('status')
-        .eq('role', 'user');
+    final response = await supabase.functions.invoke('admin-get-user-stats');
     if (!mounted) return;
-    final rows = data as List;
     setState(() {
-      _totalUsers = rows.length;
-      _activeUsers = rows.where((r) => r['status'] == 'active').length;
+      _totalUsers = response.data['total'] ?? 0;
+      _activeUsers = response.data['active'] ?? 0;
       _loading = false;
     });
   }
@@ -123,6 +121,32 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                     if (mounted) {
                       _loadStats();
                     }
+                  },
+                ),
+                _menuTile(
+                  icon: Icons.warning_amber_outlined,
+                  title: 'Manage Safety Alerts',
+                  subtitle: 'View, edit, and delete reported alerts',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminAlertsPage(),
+                      ),
+                    );
+                  },
+                ),
+                _menuTile(
+                  icon: Icons.bar_chart_outlined,
+                  title: 'Generate Reports',
+                  subtitle: 'View system statistics and reports',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminReportPage(),
+                      ),
+                    );
                   },
                 ),
               ],

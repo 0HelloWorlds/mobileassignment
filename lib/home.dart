@@ -3,10 +3,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:mob_ass/route_result.dart';
 import 'package:mob_ass/map/live_location.dart';
 import 'package:mob_ass/map/geocoding.dart';
+import 'package:mob_ass/insight.dart';
 
 import 'package:mob_ass/map/map_layer.dart';
 import 'package:mob_ass/models/safety_alert.dart';
-import 'package:mob_ass/safety_alerts_store.dart';
+import 'package:mob_ass/alerts/safety_alerts_store.dart';
 
 class HomePage extends StatefulWidget {
   final Function(int)? onNavigateToTab;
@@ -40,7 +41,6 @@ class _HomePageState extends State<HomePage> {
     if (mounted) setState(() {});
   }
 
-  // Called by LiveLocationMap every time a new GPS fix comes in.
   void _onLocationChanged(LatLng position) async {
     _currentPosition = position;
     final movedFar = _lastGeocodedPosition == null ||
@@ -65,18 +65,28 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: () => _alertsStore.loadAlerts(),
           child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      onPressed: (){},
-                      icon: const Icon(Icons.menu),),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const InsightsPage(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.bar_chart, color: Colors.blueGrey),
+                    ),
                     Column(
                       children: const [
                         Text(
@@ -93,15 +103,11 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.notifications_none, color: Colors.red),
-                      onPressed: (){},
-                    ),
+                    const SizedBox(width: 48),
                   ],
                 ),
                 const SizedBox(height: 16,),
 
-                // Search Bar
                 GestureDetector(
                   onTap: (){
                     Navigator.push(
@@ -135,7 +141,6 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 16),
 
-                // Current location card
                 InkWell(
                   onTap: () => widget.onNavigateToTab?.call(1),
                   child: Container(
@@ -170,7 +175,6 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 16),
 
-                // Mini Map Preview Box - real, live-updating OpenStreetMap
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
@@ -186,7 +190,6 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 20),
 
-                //Nearby Alert Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -205,11 +208,12 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ),
-          )
+          ),
+        ),
       ),
     );
   }
-  // Builds the top 3 nearest alert cards from the shared alerts store.
+
   List<Widget> _buildNearbyAlertCards() {
     final position = _currentPosition;
     final List<SafetyAlert> nearest = position != null
@@ -257,7 +261,6 @@ class _HomePageState extends State<HomePage> {
     return cards;
   }
 
-//Helper function to build alert items
   Widget _buildActionButton(BuildContext context, IconData icon, String label, Color color) {
     return GestureDetector(
       onTap: () {
@@ -282,7 +285,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-//Helper function to build alert items
   Widget _buildAlertCard({
     required IconData icon,
     required Color iconColor,

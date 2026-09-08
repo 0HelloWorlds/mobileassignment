@@ -5,10 +5,10 @@ import 'package:mob_ass/auth/login_page.dart';
 import 'package:mob_ass/models/app_user.dart';
 import 'package:mob_ass/models/emergency_contact.dart';
 
-import 'package:mob_ass/profile/edit_profile_page.dart';
-import 'package:mob_ass/profile/update_password_page.dart';
+import 'package:mob_ass/user/edit_profile_page.dart';
+import 'package:mob_ass/user/update_password_page.dart';
 
-import 'package:mob_ass/profile/emergency_contact_form_page.dart';
+import 'package:mob_ass/user/emergency_contact_form_page.dart';
 import 'package:mob_ass/emergency/emergency_assistance_page.dart';
 import 'package:mob_ass/emergency/emergency_history_page.dart';
 
@@ -45,13 +45,9 @@ class _ProfilePageState extends State<ProfilePage> {
           final profile = await fetchCurrentProfile();
           List<EmergencyContact> contacts = [];
           if (profile != null) {
-            final data = await supabase
-                .from('emergency_contacts')
-                .select()
-                .eq('user_id', profile.id)
-                .order('created_at');
-            contacts = (data as List)
-                .map((e) => EmergencyContact.fromJson(e))
+            final response = await supabase.functions.invoke('get-emergency-contacts');
+            contacts = (response.data['contacts'] as List)
+                .map((c) => EmergencyContact.fromJson(c))
                 .toList();
           }
           if (!mounted) {
@@ -66,7 +62,7 @@ class _ProfilePageState extends State<ProfilePage> {
           if (!mounted) {
             return;
           } else {
-            ScaffoldMessenger.of(context) .showSnackBar(
+            ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Failed to load profile: $e')));
           }
         } finally {
@@ -167,11 +163,12 @@ class _ProfilePageState extends State<ProfilePage> {
         return;
       } else {
         try {
-          await supabase
-              .from('emergency_contacts')
-              .delete()
-              .eq('contact_id', contact.contactId);
-          _load();
+          final response = await supabase.functions.invoke('delete-emergency-contact',
+            body: {'contact_id': contact.contactId},
+          );
+          if (response.data['success'] == true) {
+            await _load();
+          }
         } catch (e) {
           if (!mounted) return;
           ScaffoldMessenger.of(context)

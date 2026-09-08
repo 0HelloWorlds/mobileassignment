@@ -14,14 +14,8 @@ class AuthException implements Exception {
 bool get isLoggedIn => supabase.auth.currentUser != null;
 
 Future<AppUser?> fetchCurrentProfile() async {
-  final userId = supabase.auth.currentUser?.id;
-  if (userId == null) return null;
-
-  final data = await supabase
-      .from('user')
-      .select()
-      .eq('user_id', userId)
-      .maybeSingle();
+  final response = await supabase.functions.invoke('get-user');
+  final data = response.data['user'];
 
   if (data == null) return null;
   return AppUser.fromJson(data);
@@ -74,38 +68,10 @@ Future<void> createProfileAfterVerification() async {
     throw AuthException('You must be logged in.');
   }
 
-  final existingProfile = await supabase
-      .from('user')
-      .select('user_id')
-      .eq('user_id', user.id)
-      .maybeSingle();
+  final response = await supabase.functions.invoke('create-user');
 
-  if (existingProfile != null) {
-    return;
-  }
-
-  final metadata = user.userMetadata;
-
-  try {
-    await supabase.from('user').insert({
-      'user_id': user.id,
-      'name': metadata?['name'],
-      'email': user.email,
-      'role': metadata?['role'] ?? 'user',
-      'phone_number': metadata?['phone_number'],
-      'status': 'active',
-    });
-
-    await supabase.from('emergency_contacts').insert({
-      'user_id': user.id,
-      'full_name': metadata?['emergency_contact_name'],
-      'contact_number': metadata?['emergency_contact_number'],
-      'relationship': metadata?['emergency_contact_relationship'],
-    });
-  } catch (e) {
-    throw AuthException(
-      'Failed to create profile: $e',
-    );
+  if (response.data['error'] != null) {
+    throw AuthException('Failed to create profile: ${response.data['error']}');
   }
 }
 
@@ -172,10 +138,13 @@ Future<String> uploadProfilePhoto(Uint8List imageBytes, String userId,) async {
         .from('profile-photos')
         .getPublicUrl(filePath);
 
-    await supabase
-        .from('user')
-        .update({'photo': photoUrl})
-        .eq('user_id', userId);
+    final response = await supabase.functions.invoke('update-user', body: {
+      'photo': photoUrl,
+    });
+
+    if (response.data['error'] != null) {
+      throw AuthException('Failed to update photo: ${response.data['error']}');
+    }
 
     return photoUrl;
   } catch (e) {

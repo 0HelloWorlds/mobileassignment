@@ -38,11 +38,16 @@ class _AdminUserDetailPageState extends State<AdminUserDetailPage> {
 
     setState(() => _saving = true);
     try {
-      await supabase.from('user').update({
+      final response = await supabase.functions.invoke('admin-update-user', body: {
+        'target_user_id': widget.user.id,
         'name': _nameController.text.trim(),
         'phone_number': _phoneController.text.trim(),
         'status': _isActive ? 'active' : 'inactive',
-      }).eq('user_id', widget.user.id);
+      });
+
+      if (response.data['error'] != null) {
+        throw Exception(response.data['error']);
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context)

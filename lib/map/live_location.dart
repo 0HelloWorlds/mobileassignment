@@ -15,7 +15,6 @@ class LiveLocationMap extends StatefulWidget {
 
   final List<Polyline> polylines;
 
-  /// Called every time a new GPS fix comes in, with the updated LatLng.
   final ValueChanged<LatLng>? onLocationChanged;
 
   const LiveLocationMap({
@@ -45,6 +44,8 @@ class _LiveLocationMapState extends State<LiveLocationMap> {
   bool _permissionDenied = false;
   bool _mapReady = false;
 
+  bool _followMe = true;
+
   @override
   void initState() {
     super.initState();
@@ -58,7 +59,6 @@ class _LiveLocationMapState extends State<LiveLocationMap> {
   }
 
   Future<void> _initLocation() async {
-    // 1. Make sure device GPS/location service is turned on.
     bool serviceEnabled = await _location.serviceEnabled();
     if (!serviceEnabled) {
       serviceEnabled = await _location.requestService();
@@ -72,7 +72,6 @@ class _LiveLocationMapState extends State<LiveLocationMap> {
       }
     }
 
-    // 2. Make sure we have permission to read the user's location.
     PermissionStatus permission = await _location.hasPermission();
     if (permission == PermissionStatus.denied) {
       permission = await _location.requestPermission();
@@ -87,7 +86,6 @@ class _LiveLocationMapState extends State<LiveLocationMap> {
       return;
     }
 
-    // 3. Start listening for live position updates.
     _locationSub = _location.onLocationChanged.listen((locData) {
       if (locData.latitude == null || locData.longitude == null) return;
       final newLatLng = LatLng(locData.latitude!, locData.longitude!);
@@ -97,10 +95,17 @@ class _LiveLocationMapState extends State<LiveLocationMap> {
         _loading = false;
       });
       widget.onLocationChanged?.call(newLatLng);
-      if (_mapReady) {
+      if (_mapReady && _followMe) {
         _mapController.move(newLatLng, _mapController.camera.zoom);
       }
     });
+  }
+
+  void _recenter() {
+    final pos = _currentLatLng;
+    if (pos == null) return;
+    setState(() => _followMe = true);
+    _mapController.move(pos, _mapController.camera.zoom);
   }
 
   Future<void> _retry() async {
@@ -162,53 +167,84 @@ class _LiveLocationMapState extends State<LiveLocationMap> {
       );
     }
 
-    return FlutterMap(
-      mapController: _mapController,
-      options: MapOptions(
-        initialCenter: _currentLatLng!,
-        initialZoom: widget.zoom,
-        interactionOptions: InteractionOptions(
-          flags: widget.interactive ? InteractiveFlag.all : InteractiveFlag.none,
-        ),
-        onMapReady: () {
-          _mapReady = true;
-        },
-      ),
+    return Stack(
       children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.mob_ass',
-        ),
-        if (widget.polylines.isNotEmpty)
-          PolylineLayer(polylines: widget.polylines),
-        if (widget.extraMarkers.isNotEmpty)
-          MarkerLayer(markers: widget.extraMarkers),
-        MarkerLayer(
-          markers: [
-            Marker(
-              point: _currentLatLng!,
-              width: 40,
-              height: 40,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.25),
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
+        FlutterMap(
+          mapController: _mapController,
+          options: MapOptions(
+            initialCenter: _currentLatLng!,
+            initialZoom: widget.zoom,
+            interactionOptions: InteractionOptions(
+              flags: widget.interactive ? InteractiveFlag.all : InteractiveFlag.none,
+            ),
+            onMapReady: () {
+              _mapReady = true;
+            },
+            onMapEvent: (event) {
+              final userDragged = event.source == MapEventSource.onDrag ||
+                  event.source == MapEventSource.onMultiFinger ||
+                  event.source == MapEventSource.flingAnimationController ||
+                  event.source == MapEventSource.doubleTapZoomAnimationController;
+              if (userDragged && _followMe) {
+                setState(() => _followMe = false);
+              }
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.example.mob_ass',
+            ),
+            if (widget.polylines.isNotEmpty)
+              PolylineLayer(polylines: widget.polylines),
+            if (widget.extraMarkers.isNotEmpty)
+              MarkerLayer(markers: widget.extraMarkers),
+            MarkerLayer(
+              markers: [
+                Marker(
+                  point: _currentLatLng!,
+                  width: 40,
+                  height: 40,
                   child: Container(
-                    width: 14,
-                    height: 14,
                     decoration: BoxDecoration(
-                      color: Colors.blue,
+                      color: Colors.blue.withOpacity(0.25),
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: Center(
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ],
         ),
+        if (widget.interactive && !_followMe)
+          Positioned(
+            right: 12,
+            bottom: 12,
+            child: Material(
+              color: Colors.white,
+              shape: const CircleBorder(),
+              elevation: 4,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: _recenter,
+                child: const Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Icon(Icons.my_location, color: Colors.blue, size: 22),
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }

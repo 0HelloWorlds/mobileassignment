@@ -29,6 +29,7 @@ class _SignUpPageState extends State<SignUpPage> {
   final _contactRelationshipController = TextEditingController();
 
   bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   bool _loading = false;
 
   @override
@@ -157,9 +158,17 @@ class _SignUpPageState extends State<SignUpPage> {
                     ),
                     TextFormField(
                       controller: _confirmPasswordController,
-                      obscureText: _obscurePassword,
-                      decoration: const InputDecoration(
-                          labelText: 'Confirm Password'),
+                      obscureText: _obscureConfirm,
+                      decoration: InputDecoration(
+                          labelText: 'Confirm Password',
+                          suffixIcon: IconButton(
+                          icon: Icon(_obscureConfirm
+                              ? Icons.visibility_off
+                              : Icons.visibility),
+                          onPressed: () => setState(
+                                  () => _obscureConfirm = !_obscureConfirm),
+                          ),
+                      ),
                       validator: (v) {
                         if (v != _passwordController.text) {
                           return 'Passwords do not match';
