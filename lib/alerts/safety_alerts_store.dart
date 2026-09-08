@@ -70,16 +70,67 @@ class SafetyAlertsStore extends ChangeNotifier {
         AlertSeverity? severity,
         String? status,
       }) async {
+
+
+    final alertData = await supabase
+        .from('safetyalerts')
+        .select()
+        .eq('id', id)
+        .single();
+
+    final oldAlert =
+    SafetyAlert.fromJson(alertData as Map<String, dynamic>);
+
     final updates = <String, dynamic>{};
-    if (typeId != null) updates['type'] = typeId;
-    if (title != null) updates['title'] = title;
-    if (description != null) updates['description'] = description;
-    if (severity != null) updates['severity'] = severity.name;
-    if (status != null) updates['status'] = status;
+
+    if (typeId != null) {
+      updates['type'] = typeId;
+    }
+
+    if (title != null) {
+      updates['title'] = title;
+    }
+
+    if (description != null) {
+      updates['description'] = description;
+    }
+
+    if (severity != null) {
+      updates['severity'] = severity.name;
+    }
+
+    if (status != null) {
+      updates['status'] = status;
+    }
 
     if (updates.isEmpty) return;
 
-    await supabase.from('safetyalerts').update(updates).eq('id', id);
+
+    // Update the alert
+    await supabase
+        .from('safetyalerts')
+        .update(updates)
+        .eq('id', id);
+
+
+
+    if (status == 'resolved' &&
+        oldAlert.status != 'resolved' &&
+        oldAlert.reportedBy != null) {
+
+      await supabase
+          .from('notifications')
+          .insert({
+        'user_id': oldAlert.reportedBy,
+        'title': 'Safety Alert Resolved',
+        'message':
+        'Your reported safety alert "${oldAlert.title}" has been marked as resolved.',
+        'type': 'alert_resolved',
+        'is_read': false,
+      });
+    }
+
+
     await loadAlerts();
   }
 
