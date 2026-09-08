@@ -3,7 +3,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:mob_ass/auth/auth_service.dart';
 import 'package:mob_ass/models/safety_alert.dart';
 
-
 class SafetyAlertsStore extends ChangeNotifier {
   SafetyAlertsStore._internal();
 
@@ -18,7 +17,6 @@ class SafetyAlertsStore extends ChangeNotifier {
   List<SafetyAlert> get alerts => List.unmodifiable(_alerts);
   bool get isLoading => _isLoading;
   String? get error => _error;
-
 
   Future<void> loadAlerts() async {
     _isLoading = true;
@@ -42,7 +40,6 @@ class SafetyAlertsStore extends ChangeNotifier {
     }
   }
 
-
   Future<void> reportAlert({
     required String typeId,
     required String title,
@@ -65,7 +62,6 @@ class SafetyAlertsStore extends ChangeNotifier {
     await loadAlerts();
   }
 
-
   Future<void> updateAlert(
       String id, {
         String? typeId,
@@ -87,12 +83,21 @@ class SafetyAlertsStore extends ChangeNotifier {
     await loadAlerts();
   }
 
-
   Future<void> deleteAlert(String id) async {
-    await supabase.from('safetyalerts').delete().eq('id', id);
+    final userId = supabase.auth.currentUser?.id;
+
+    if (userId == null) {
+      throw Exception('User is not logged in.');
+    }
+
+    await supabase
+        .from('safetyalerts')
+        .delete()
+        .eq('id', id)
+        .eq('reported_by', userId);
+
     await loadAlerts();
   }
-
 
   List<MapEntry<SafetyAlert, double>> nearby(
       LatLng from, {

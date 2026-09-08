@@ -6,9 +6,6 @@ import 'safety_alerts.dart';
 import 'profile.dart';
 import 'alerts/safety_alerts_store.dart';
 
-const String supabaseUrl = 'https://hrkbrglfbjlrgptrmida.supabase.co';
-const String supabaseKey = 'sb_publishable_pbLdoyz4J9o3tT8UuU4HQA_HUSF-Yiz';
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
